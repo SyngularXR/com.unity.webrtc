@@ -14,6 +14,35 @@ namespace unity
 namespace webrtc
 {
 
+    class NullI420GpuMemoryBuffer : public GpuMemoryBufferInterface
+    {
+    public:
+        Size GetSize() const override { return { 2, 2 }; }
+        UnityRenderingExtTextureFormat GetFormat() const override
+        {
+            return kUnityRenderingExtFormatR8G8B8A8_SRGB;
+        }
+        rtc::scoped_refptr<I420BufferInterface> ToI420() override { return nullptr; }
+        const GpuMemoryBufferHandle* handle() const override { return nullptr; }
+
+    protected:
+        ~NullI420GpuMemoryBuffer() override = default;
+    };
+
+    TEST(VideoFrameAdapterTest, FailedI420ConversionReturnsNull)
+    {
+        rtc::scoped_refptr<GpuMemoryBufferInterface> gpuBuffer(
+            new rtc::RefCountedObject<NullI420GpuMemoryBuffer>());
+        auto sourceFrame = VideoFrame::WrapExternalGpuMemoryBuffer(
+            { 2, 2 }, gpuBuffer, nullptr, TimeDelta::Zero());
+        auto frame = VideoFrameAdapter::CreateVideoFrame(sourceFrame);
+        auto buffer = frame.video_frame_buffer();
+
+        EXPECT_EQ(buffer->GetI420(), nullptr);
+        EXPECT_EQ(buffer->ToI420(), nullptr);
+        EXPECT_EQ(buffer->Scale(1, 1)->GetI420(), nullptr);
+    }
+
     class GpuMemoryBufferTest : public testing::TestWithParam<UnityGfxRenderer>
     {
     public:
