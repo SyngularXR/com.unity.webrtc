@@ -212,3 +212,22 @@ Submitting apps to Google Play and targeting Android 15+ devices must support 16
 ```
 patch -N "src/sdk/android/BUILD.gn" < "$COMMAND_DIR/patches/support_16kb_pagesizes_android.patch"
 ```
+
+## visionOS
+
+M116's toolchain predates visionOS. `visionos_build.patch` adds a GN arg `target_platform` (`iphoneos` or `visionos`) to `//build`: it selects the `xros`/`xrsimulator` SDK and the `apple-xros` target triple, and links the host tools with ld64 because the visionOS build compiles with Xcode's clang (Chromium's clang 17 cannot target xros). `visionos_sdk.patch` leaves out the ObjC camera capture and preview classes, which use APIs visionOS does not have (the plugin does not use them), and asks VideoToolbox for Metal-compatible pixel buffers. `visionos_zlib.patch` drops zlib's `TARGET_OS_MAC` check, which breaks `<stdio.h>` with newer Apple SDKs (fixed upstream in zlib 1.2.12).
+
+### Patch files
+
+- visionos_build.patch
+- visionos_sdk.patch
+- visionos_zlib.patch
+
+### Example
+
+```
+# after the iOS patches (add_objc_deps.patch first)
+patch -N -p1 -d src < "$COMMAND_DIR/patches/visionos_build.patch"
+patch -N -p1 -d src < "$COMMAND_DIR/patches/visionos_sdk.patch"
+patch -N -p1 -d src < "$COMMAND_DIR/patches/visionos_zlib.patch"
+```

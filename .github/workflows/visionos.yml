@@ -1,0 +1,59 @@
+name: visionOS plugin
+
+# Builds libwebrtc M116 and the native plugin for visionOS (device + Simulator) and uploads
+# webrtc-visionos.zip (static libs + headers) and webrtc.xcframework (Runtime/Plugins/visionOS).
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "BuildScripts~/build_libwebrtc_visionos.sh"
+      - "BuildScripts~/build_plugin_visionos.sh"
+      - "BuildScripts~/patches/**"
+      - "Plugin~/**"
+      - ".github/workflows/visionos.yml"
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: package
+
+      - name: Select Xcode 26 and the visionOS platform
+        run: |
+          xcode=$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          xcrun --sdk xros --show-sdk-path || xcodebuild -downloadPlatform visionOS
+          xcrun --sdk xros --show-sdk-version
+          df -h "$GITHUB_WORKSPACE"
+
+      - name: Build libwebrtc
+        run: |
+          mkdir -p libwebrtc && cd libwebrtc
+          bash "$GITHUB_WORKSPACE/package/BuildScripts~/build_libwebrtc_visionos.sh"
+          df -h .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webrtc-visionos
+          path: libwebrtc/artifacts/webrtc-visionos.zip
+          compression-level: 0
+
+      - name: Build plugin
+        working-directory: package
+        run: |
+          pip3 install --break-system-packages -q cmake || brew install cmake
+          bash "BuildScripts~/build_plugin_visionos.sh" ../libwebrtc/artifacts/webrtc-visionos.zip
+          for slice in Runtime/Plugins/visionOS/webrtc.xcframework/*/webrtc.framework/webrtc; do
+            echo "$slice"; otool -l "$slice" | grep -A3 LC_BUILD_VERSION | grep -E "platform|minos"
+          done
+          (cd Runtime/Plugins/visionOS && zip -qry "$GITHUB_WORKSPACE/webrtc.xcframework.zip" webrtc.xcframework)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webrtc-xcframework
+          path: webrtc.xcframework.zip
+          compression-level: 0

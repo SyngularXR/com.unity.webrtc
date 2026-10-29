@@ -91,8 +91,9 @@ target_compile_definitions(WebRTCLib PUBLIC $<$<CONFIG:Debug>:DEBUG>)
 set_target_properties(WebRTCLib PROPERTIES CXX_VISIBILITY_PRESET hidden
                                            VISIBILITY_INLINES_HIDDEN ON)
 
-if(iOS OR macOS)
+if((iOS OR macOS) AND NOT CMAKE_SYSTEM_NAME STREQUAL "visionOS")
   target_sources(WebRTCLib PRIVATE ../libcxx/debug.cpp)
+elseif(iOS)
 else()
   target_sources(WebRTCLib PRIVATE UnityVulkanInterfaceFunctions.cpp
                                    UnityVulkanInterfaceFunctions.h)
@@ -196,7 +197,7 @@ elseif(iOS)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -x objective-c")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-lto -fno-rtti")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -x objective-c++")
-  set(PROJECT_BINARY_DIR "${CMAKE_SOURCE_DIR}/../Runtime/Plugins/iOS")
+  set(PROJECT_BINARY_DIR "${CMAKE_SOURCE_DIR}/../Runtime/Plugins/${CMAKE_SYSTEM_NAME}")
 
   target_compile_definitions(WebRTCLib PUBLIC WEBRTC_IOS WEBRTC_MAC
                                               WEBRTC_POSIX)
