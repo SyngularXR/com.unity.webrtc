@@ -729,7 +729,7 @@ namespace Unity.WebRTC
     /// <seealso cref="WebRTCSettings"/>
     public static class WebRTC
     {
-#if UNITY_IOS
+#if UNITY_IOS || UNITY_VISIONOS
         internal const string Lib = "__Internal";
 #else
         internal const string Lib = "webrtc";
@@ -757,7 +757,7 @@ namespace Unity.WebRTC
             NativeMethods.SetLocalDescriptionObserverRegisterCallback(OnSetLocalDescription);
             NativeMethods.SetRemoteDescriptionObserverRegisterCallback(OnSetRemoteDescription);
             NativeMethods.SetTransformedFrameRegisterCallback(OnSetTransformedFrame);
-#if UNITY_IOS && !UNITY_EDITOR
+#if (UNITY_IOS || UNITY_VISIONOS) && !UNITY_EDITOR
             NativeMethods.RegisterRenderingWebRTCPlugin();
 #endif
             s_context = Context.Create();
@@ -1423,7 +1423,7 @@ namespace Unity.WebRTC
 
     internal static class NativeMethods
     {
-#if UNITY_IOS && !UNITY_EDITOR
+#if (UNITY_IOS || UNITY_VISIONOS) && !UNITY_EDITOR
         [DllImport(WebRTC.Lib)]
         public static extern void RegisterRenderingWebRTCPlugin();
 #endif

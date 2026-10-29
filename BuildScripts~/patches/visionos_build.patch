@@ -1,0 +1,95 @@
+diff --git a/build/config/apple/sdk_info.py b/build/config/apple/sdk_info.py
+index 81b06d4..94b2609 100755
+--- a/build/config/apple/sdk_info.py
++++ b/build/config/apple/sdk_info.py
+@@ -134,7 +134,7 @@ def main():
+                       default='.',
+                       help='Value of gn $root_build_dir')
+   parser.add_argument('platform',
+-                      choices=['iphoneos', 'iphonesimulator', 'macosx'])
++                      choices=['iphoneos', 'iphonesimulator', 'macosx', 'xros', 'xrsimulator'])
+   args = parser.parse_args()
+   if args.developer_dir:
+     os.environ['DEVELOPER_DIR'] = args.developer_dir
+diff --git a/build/config/ios/BUILD.gn b/build/config/ios/BUILD.gn
+index 8881312..ccb113b 100644
+--- a/build/config/ios/BUILD.gn
++++ b/build/config/ios/BUILD.gn
+@@ -41,6 +41,9 @@ config("compiler") {
+ 
+   # OS.
+   triplet_os = "apple-ios"
++  if (target_platform == "visionos") {
++    triplet_os = "apple-xros"
++  }
+ 
+   # Set target.
+   common_flags = [
+@@ -56,6 +59,9 @@ config("compiler") {
+   asmflags = common_flags
+   cflags = common_flags
+   swiftflags = common_flags
++  if (target_platform == "visionos") {
++    cflags += [ "-Wno-c++11-narrowing-const-reference" ]
++  }
+ 
+   swiftflags += [
+     "-swift-version",
+diff --git a/build/config/ios/config.gni b/build/config/ios/config.gni
+index c5c10c3..743cc32 100644
+--- a/build/config/ios/config.gni
++++ b/build/config/ios/config.gni
+@@ -9,8 +9,13 @@ declare_args() {
+   # default is only there for compatibility reasons and will be removed (see
+   # crbug.com/1138425 for more details).
+   target_environment = ""
++
++  # Apple platform to build for: "iphoneos" or "visionos".
++  target_platform = "iphoneos"
+ }
+ 
++assert(target_platform == "iphoneos" || target_platform == "visionos")
++
+ if (target_environment == "") {
+   if (current_cpu == "x86" || current_cpu == "x64") {
+     target_environment = "simulator"
+diff --git a/build/config/ios/ios_sdk.gni b/build/config/ios/ios_sdk.gni
+index 65aee82..b9f5d9e 100644
+--- a/build/config/ios/ios_sdk.gni
++++ b/build/config/ios/ios_sdk.gni
+@@ -73,7 +73,13 @@ if (target_environment == "device" && ios_enable_code_signing) {
+ 
+ if (ios_sdk_path == "") {
+   # Compute default target.
+-  if (target_environment == "simulator") {
++  if (target_platform == "visionos" && target_environment == "simulator") {
++    ios_sdk_name = "xrsimulator"
++    ios_sdk_platform = "XRSimulator"
++  } else if (target_platform == "visionos" && target_environment == "device") {
++    ios_sdk_name = "xros"
++    ios_sdk_platform = "XROS"
++  } else if (target_environment == "simulator") {
+     ios_sdk_name = "iphonesimulator"
+     ios_sdk_platform = "iPhoneSimulator"
+   } else if (target_environment == "device") {
+diff --git a/build/toolchain/mac/BUILD.gn b/build/toolchain/mac/BUILD.gn
+index 73f44ae..3c2dcf8 100644
+--- a/build/toolchain/mac/BUILD.gn
++++ b/build/toolchain/mac/BUILD.gn
+@@ -2,6 +2,7 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
++import("//build/config/ios/config.gni")
+ import("//build/config/mac/mac_sdk.gni")
+ import("//build/config/v8_target_cpu.gni")
+ import("//build/toolchain/apple/toolchain.gni")
+@@ -24,7 +25,7 @@ template("mac_toolchain") {
+ 
+       if (target_os == "ios") {
+         # Use LLD for the host part of a chrome/ios build.
+-        use_lld = true
++        use_lld = target_platform != "visionos"
+ 
+         # Override `is_component_build` for the host toolchain.
+         # See https://crbug.com/gn/286 for details why this is
